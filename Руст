@@ -1,0 +1,1501 @@
+// 832 AGI PROJECTION CORE v0.3.2 — Rust (Final Edition)
+// Компилировать: rustc -O 832_full.rs -o 832_full && ./832_full
+
+use std::collections::{HashMap, HashSet};
+use std::cell::Cell;
+use std::f64::consts::PHI;
+
+// =========================
+// КОНСТАНТЫ (без изменений)
+// =========================
+const WORLD_SIZE: usize = 104;
+const CHANNELS: usize = 23;
+const STEPS: usize = 500;
+
+const SOUL_WEIGHT_GAIN_RATE: f64 = 0.05;
+const CONTRADICTION_GAIN_RATE: f64 = 0.01;
+const CONTRADICTION_DECAY_RATE: f64 = 0.003;
+const BODY_MEMORY_DECAY: f64 = 0.99;
+const PRED_ERROR_LEARNING: f64 = 0.9;
+const SELF_SURPRISE_FACTOR: f64 = 0.05;
+const WHISPER_THRESHOLD: f64 = 0.01;
+const INTENT_SWITCH_COOLDOWN: i32 = 15;
+const INTENT_COMMITMENT_DECAY: f64 = 0.95;
+const MAX_GIVEN_PER_STEP: usize = 5;
+const MAX_UNKNOWN_SPAWN_PER_STEP: usize = 10;
+const MIN_COMPONENT_CELLS: usize = 3;
+const COMPETITION_MAX_DISTANCE: isize = 10;
+const EMOTIONAL_DECAY_RATE_BASE: f64 = 0.998;
+const ANTI_CONFORMIST_INTERVAL: i32 = 200;
+const MIN_AGE_FOR_ANTI_CONFORMIST: i32 = 20;
+const RESONANCE_DECAY: f64 = 0.95;
+
+const OPERATOR_SCAR_IMPACT: f64 = 0.02;
+const OPERATOR_MEMORY_DECAY: f64 = 0.995;
+const OPERATOR_SIGNAL_STRENGTH: f64 = 0.03;
+const OPERATOR_SIGNAL_DECAY: f64 = 0.95;
+const OPERATOR_SOUL_WHISPER: f64 = 0.005;
+const LINEAGE_RARITY_BOOST: f64 = 0.25;
+const LINEAGE_DOMINANCE_PENALTY: f64 = 0.25;
+const ECHO_DECAY_STRENGTH: f64 = 0.02;
+const ECHO_INJECTION_COOLDOWN: i64 = 15;
+const GRATITUDE_COOPERATION_BONUS: f64 = 0.08;
+const GRIEF_SOUL_IMPACT: f64 = 0.015;
+const ANTI_COHERENCE_THRESHOLD: f64 = 0.98;
+const ANTI_COHERENCE_SHAKE: f64 = 0.005;
+const EMOTIONAL_MEMORY_DECAY: f64 = 0.9;
+const EMOTIONAL_CONTAGION_FACTOR: f64 = 0.1;
+const EMOTIONAL_INDIVIDUALITY: f64 = 0.5;
+const GRATITUDE_AGGRESSION_REDUCTION: f64 = 0.5;
+const GRIEF_METABOLIC_PENALTY: f64 = 0.5;
+const EMOTIONAL_GRATITUDE_THRESHOLD: f64 = 0.3;
+const EMOTIONAL_GRIEF_THRESHOLD: f64 = 0.3;
+const EMOTIONAL_MUTATION_STRENGTH: f64 = 0.05;
+const EMERGENCY_DIVERSIFICATION_PROB: f64 = 0.03;
+const EMOTIONAL_SPECIATION_THRESHOLD: f64 = 0.5;
+const EMOTIONAL_SPECIATION_PROB: f64 = 0.05;
+const SPEACIATION_COOLDOWN: i32 = 20;
+const SPEACIATION_MIN_AGE: i32 = 30;
+const SCREAM_CRISIS_THRESHOLD: f64 = 0.7;
+const SCREAM_SOUL_THRESHOLD: f64 = 0.3;
+const SCREAM_PROB: f64 = 0.15;
+const SCREAM_SCAR_IMPACT: f64 = 0.25;
+const SCREAM_BINDING_BOOST: f64 = 0.5;
+const SCREAM_ENERGY_PENALTY: f64 = 0.2;
+const EMOTIONAL_RADIATION_STRENGTH: f64 = 0.05;
+const FIELD_DECAY: f64 = 0.998;
+const SCAR_SATURATION: f64 = 5.0;
+const AGENT_INFLUENCE: f64 = 0.005;
+const INVARIANT_REINFORCE: f64 = 0.02;
+const HEARTBEAT_AMPLITUDE: f64 = 0.025;
+const HEARTBEAT_FREQ: f64 = 0.03;
+const SCAR_ENERGY_COUPLING: f64 = 0.01;
+const VORTICITY_COUPLING: f64 = 0.005;
+const GRADIENT_SENSITIVITY: f64 = 0.2;
+const AGENT_SCAR_SENSE: f64 = 0.02;
+const AGENT_BINDING_SENSE: f64 = 0.01;
+const GLOBAL_VISCOSITY: f64 = 0.999;
+const LOCAL_FATIGUE: f64 = 0.001;
+const VORTICITY_DECAY: f64 = 0.995;
+const PATTERN_ENERGY_THRESHOLD: f64 = 0.08;
+const DIVIDE_MIN_SIZE: usize = 5;
+const MUTATION_STRENGTH_BASE: f64 = 0.1;
+const PRED_ERROR_THRESHOLD: f64 = 0.5;
+const DIVIDE_ERROR_THRESHOLD: f64 = 0.08;
+const MODEL_LEARNING_RATE: f64 = 0.1;
+const SURPRISE_DECAY: f64 = 0.95;
+const MAX_LINEAGES: usize = 5;
+const LINEAGE_SELECTION_INTERVAL: usize = 10;
+const LINEAGE_MIN_AGE: i32 = 15;
+const DIVERSITY_NOISE: f64 = 0.0005;
+const CRISIS_PERIOD: i32 = 120;
+const CRISIS_INTENSITY: f64 = 0.08;
+const PHASE_TENSION_THRESHOLD_LOW_BASE: f64 = 0.002;
+const PHASE_TENSION_THRESHOLD_MID_BASE: f64 = 0.005;
+const PHASE_TENSION_THRESHOLD_HIGH_BASE: f64 = 0.015;
+const PHASE_UNKNOWN_DELTA_THRESHOLD: f64 = 0.015;
+const PHASE_BELIEF_LAG_THRESHOLD: f64 = 0.4;
+const SELF_MODEL_LEARNING_RATE: f64 = 0.05;
+const UNKNOWN_DECAY: f64 = 0.995;
+const UNKNOWN_BACKGROUND: f64 = 0.02;
+const UNKNOWN_DIVERGENCE_WEIGHT: f64 = 0.6;
+const STAB_MODEL_GROWTH: f64 = 1.001;
+const STAB_ERROR_DECAY: f64 = 0.998;
+const RECOVERY_MODEL_PULL: f64 = 0.005;
+const CRISIS_MEMORY_DECAY: f64 = 0.90;
+const CRISIS_MEMORY_MAX: f64 = 0.8;
+const GIVEN_CONFIDENCE_THRESHOLD: f64 = 0.65;
+const GIVEN_CONSISTENCY_THRESHOLD: f64 = 0.50;
+const GIVEN_MODEL_SHAKE: f64 = 0.5;
+const GIVEN_MIN_AGE: i32 = 10;
+const GIVEN_COOLDOWN: i32 = 15;
+const NOVELTY_BONUS_WEIGHT: f64 = 0.2;
+const UNKNOWN_PENALTY_BASE: f64 = 0.15;
+const UNKNOWN_REDUCTION_BONUS: f64 = 0.1;
+const PERFECT_MODEL_PENALTY: f64 = 0.002;
+const GLOBAL_EVENT_COOLDOWN: i32 = 15;
+const OVERPOPULATION_THRESHOLD: usize = 100;
+const HUNGER_MULTIPLIER: f64 = 1.8;
+const BOREDOM_WINDOW: usize = 20;
+const BOREDOM_ERR_THRESHOLD: f64 = 0.015;
+const BOREDOM_UNKNOWN_THRESHOLD: f64 = 0.12;
+const BOREDOM_TENSION_THRESHOLD: f64 = 0.005;
+const MIN_PRED_ERROR: f64 = 0.005;
+const PHASE_HYSTERESIS: f64 = 0.7;
+const PHASE_LOCK_WINDOW: i32 = 20;
+const PHASE_LOCK_THRESHOLD: i32 = 15;
+const PHASE_LOCK_PENALTY: f64 = 0.3;
+const COMPLACENCY_CONFIDENCE: f64 = 0.95;
+const COMPLACENCY_TENSION: f64 = 0.0005;
+const COMPLACENCY_THRESHOLD_SCALE: f64 = 0.7;
+const MIN_POPULATION_FOR_SPAWN: usize = 20;
+const RECOVERY_WINDOW: i32 = 10;
+const METRIC_DECAY: f64 = 0.97;
+const MAX_METRIC: f64 = 2.0;
+const MIN_ACTIVE: f64 = 0.005;
+const BASE_NOISE: f64 = 0.002;
+const MIN_PATTERNS_GUARANTEED: usize = 8;
+const UNKNOWN_SPAWN_THRESHOLD: f64 = 0.25;
+const UNKNOWN_SPAWN_PROB: f64 = 0.01;
+
+const SIGNAL_NAMES: [&str; 6] = ["alarm", "curiosity", "warning", "invitation", "gratitude", "grief"];
+
+// Индексы каналов
+const CH_ENERGY: usize = 0;
+const CH_FLUX: usize = 1;
+const CH_SCAR: usize = 2;
+const CH_NOISE: usize = 3;
+const CH_VORTICITY: usize = 4;
+const CH_OWNER: usize = 5;
+const CH_SURPRISE: usize = 6;
+const CH_UNKNOWN: usize = 7;
+const CH_EVENT: usize = 8;
+const CH_BTYPE: usize = 9;
+const CH_CRISIS: usize = 10;
+const CH_BINDING: usize = 11;
+const CH_SIGNAL_ALARM: usize = 12;
+const CH_SIGNAL_CURIOSITY: usize = 13;
+const CH_SIGNAL_WARNING: usize = 14;
+const CH_SIGNAL_INVITATION: usize = 15;
+const CH_SIGNAL_GRATITUDE: usize = 16;
+const CH_SIGNAL_GRIEF: usize = 17;
+const CH_INTENT_COOPERATE: usize = 18;
+const CH_INTENT_EXPLORE: usize = 19;
+const CH_INTENT_REST: usize = 20;
+const CH_INTENT_SEEK_HELP: usize = 21;
+const CH_RESONANCE: usize = 22;
+
+// =========================
+// ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+// =========================
+#[inline]
+fn phi_hash(x: i64, y: i64, seed: i64) -> f64 {
+    let xf = x as f64;
+    let yf = y as f64;
+    let sf = seed as f64;
+    ((xf * PHI + yf * PHI * PHI + sf * PHI * PHI * PHI) % 1.0 + 1.0) % 1.0
+}
+
+#[inline]
+fn phi_noise(t: i64, x: i64, y: i64, seed: i64) -> f64 {
+    (phi_hash(t + x, y + t, seed) - 0.5) * 0.1
+}
+
+#[inline]
+fn squash(x: f64) -> f64 {
+    if x.is_nan() || x.is_infinite() { return 0.5; }
+    x / (1.0 + x.abs())
+}
+
+fn safe_mean(arr: &[f64], default: f64) -> f64 {
+    let (sum, count) = arr.iter()
+        .filter(|x| x.is_finite())
+        .fold((0.0, 0usize), |(s, c), &v| (s + v, c + 1));
+    if count == 0 { default } else { sum / count as f64 }
+}
+
+fn emotional_decay_factor(age: i32) -> f64 {
+    let age_factor = 1.0 - 0.3 * (age as f64 / 200.0).tanh();
+    EMOTIONAL_DECAY_RATE_BASE.powf(age_factor)
+}
+
+#[inline]
+fn clip(val: f64, min_val: f64, max_val: f64) -> f64 {
+    val.max(min_val).min(max_val)
+}
+
+// =========================
+// ГЛОБАЛЬНЫЙ СЧЁТЧИК ID
+// =========================
+static NEXT_PATTERN_ID: Cell<u32> = Cell::new(1);
+
+fn next_id() -> u32 {
+    let id = NEXT_PATTERN_ID.get();
+    NEXT_PATTERN_ID.set(id + 1);
+    id
+}
+
+// =========================
+// ТИПЫ ДЛЯ ПОЛЯ
+// =========================
+type FieldLayer = Vec<Vec<Vec<f64>>>;
+type ScarField = Vec<Vec<f64>>;
+
+fn init_field() -> FieldLayer {
+    let mut f = vec![vec![vec![0.0; CHANNELS]; WORLD_SIZE]; WORLD_SIZE];
+    for x in 0..WORLD_SIZE {
+        for y in 0..WORLD_SIZE {
+            f[x][y][CH_ENERGY] = phi_hash(x as i64, y as i64, 1) * 0.2 - 0.1;
+            f[x][y][CH_FLUX] = phi_hash(x as i64, y as i64, 2) * 0.1;
+            f[x][y][CH_VORTICITY] = phi_hash(x as i64, y as i64, 3) * 0.1 - 0.05;
+            f[x][y][CH_UNKNOWN] = UNKNOWN_BACKGROUND;
+            f[x][y][CH_BINDING] = 0.05;
+            f[x][y][CH_ENERGY] += phi_noise(0, x as i64, y as i64, 42) * 0.3;
+        }
+    }
+    f
+}
+
+fn init_scar() -> ScarField {
+    vec![vec![0.0; WORLD_SIZE]; WORLD_SIZE]
+}
+
+// =========================
+// СТРУКТУРЫ
+// =========================
+#[derive(Clone, Debug)]
+struct BioEvent {
+    t: i32,
+    event_type: String,
+    details: HashMap<String, String>,
+}
+
+#[derive(Clone, Debug)]
+struct Genome {
+    learning_rate: f64,
+    meta_learning_rate: f64,
+    metabolic_cost: f64,
+    mobility: f64,
+    epistemic_strategy: f64,
+}
+
+#[derive(Clone, Debug)]
+struct Goal {
+    goal_type: String,
+    priority: f64,
+    target: Option<(usize, usize)>,
+    age: i32,
+    persistence: i32,
+}
+
+#[derive(Clone)]
+struct GhostSignature {
+    identity: [f64; 8],
+    model: [f64; 5],
+    unresolved_contradiction: f64,
+    role: u8,
+    age: i32,
+}
+
+#[derive(Clone)]
+struct Pattern {
+    id: u32,
+    cells: HashSet<(usize, usize)>,
+    energy: f64,
+    vorticity: f64,
+    age: i32,
+    alive: bool,
+    parent_id: u32,
+    lineage_id: u32,
+    generation: i32,
+    lineage_age: i32,
+    identity: [f64; 8],
+    belief: [f64; 5],
+    prediction: [f64; 5],
+    model: [f64; 5],
+    self_state_prediction: [f64; 2],
+    self_model: [f64; 2],
+    self_surprise: f64,
+    spirit_gap: f64,
+    soul_weight: f64,
+    soul_momentum: f64,
+    body_memory: f64,
+    unresolved_contradiction: f64,
+    role: u8,
+    unknown_belief: f64,
+    unknown_model: f64,
+    unknown_prediction: f64,
+    epistemic_load: f64,
+    prev_epistemic_load: f64,
+    crisis_memory: f64,
+    memory_trace: Vec<f64>,
+    self_consistency: f64,
+    coherence: f64,
+    confidence: f64,
+    given_trigger: bool,
+    given_count: i32,
+    given_cooldown: i32,
+    surprise_signal: f64,
+    emotional_memory: HashMap<String, f64>,
+    semantic_state: String,
+    in_scream: bool,
+    local_phase: String,
+    dream_timer: i32,
+    dream_interval: i32,
+    dream_duration: i32,
+    in_dream: bool,
+    dream_progress: i32,
+    scar_dream: f64,
+    pending_spore: Option<(usize, usize, f64)>,
+    last_speciation_age: i32,
+    biography: Vec<BioEvent>,
+    world_state: [f64; 8],
+    world_model: [[f64; 8]; 4],
+    last_action: usize,
+    goals: Vec<Goal>,
+    intent: Option<Goal>,
+    intent_age: i32,
+    intent_commitment: f64,
+    concepts: HashMap<(i32, i32, i32, String), (i32, [f64; 4])>,
+    concept_history: Vec<(i32, i32, i32, String)>,
+    epistemic_scar: f64,
+    alarm_level: f64,
+    last_intent_switch_age: i32,
+    protection_level: f64,
+    pred_error: f64,
+    pred_error_history: Vec<f64>,
+    unknown_error: f64,
+    compression: f64,
+    fitness: f64,
+    error_trend: f64,
+    cognitive_tension: f64,
+    genome: Genome,
+}
+
+struct EchoPrison {
+    ghosts: Vec<GhostSignature>,
+    last_echo_injection: i64,
+}
+
+impl EchoPrison {
+    fn new() -> Self {
+        EchoPrison { ghosts: Vec::new(), last_echo_injection: -100 }
+    }
+
+    fn store_echo(&mut self, pattern: &Pattern) {
+        if pattern.age >= 30 && !pattern.biography.is_empty() {
+            let last = &pattern.biography[pattern.biography.len()-1];
+            println!("[BIO #{}] died at age {}: {}", pattern.id, pattern.age, last.event_type);
+        }
+        if self.ghosts.len() > 45 { self.ghosts.remove(0); }
+        self.ghosts.push(GhostSignature {
+            identity: pattern.identity,
+            model: pattern.model,
+            unresolved_contradiction: pattern.unresolved_contradiction * 1.2,
+            role: pattern.role,
+            age: 0,
+        });
+    }
+
+    fn inject_echo(&mut self, patterns: &[Pattern], field: &mut FieldLayer, t: i64) {
+        if self.ghosts.is_empty() { return; }
+        if t - self.last_echo_injection < ECHO_INJECTION_COOLDOWN {
+            for g in &mut self.ghosts { g.age += 1; }
+            return;
+        }
+
+        self.ghosts.retain(|g| g.age < 150);
+        if self.ghosts.len() > 40 {
+            self.ghosts.sort_by(|a, b| b.unresolved_contradiction.partial_cmp(&a.unresolved_contradiction).unwrap());
+            self.ghosts.truncate(40);
+        }
+        for g in &mut self.ghosts {
+            g.unresolved_contradiction *= 1.0 - ECHO_DECAY_STRENGTH;
+        }
+
+        let boredom = calculate_boredom(patterns, field);
+
+        if self.ghosts.len() >= 2 && phi_hash(t, 0, 3333) < 0.05 {
+            let i1 = (phi_hash(t, 1, 4444) * self.ghosts.len() as f64) as usize;
+            let i2 = (phi_hash(t, 2, 5555) * self.ghosts.len() as f64) as usize;
+            if i1 != i2 && i1 < self.ghosts.len() && i2 < self.ghosts.len() {
+                let ur1 = self.ghosts[i1].unresolved_contradiction;
+                let ur2 = self.ghosts[i2].unresolved_contradiction;
+                if (ur1 - ur2).abs() <= 0.25 {
+                    let mut new_model = [0.0; 5];
+                    for i in 0..5 {
+                        new_model[i] = (self.ghosts[i1].model[i] + self.ghosts[i2].model[i]) / 2.0
+                            + (phi_hash(t, i as i64, 8888) - 0.5) * 0.01;
+                    }
+                    let new_ur = (ur1 + ur2) / 2.0;
+                    let new_role = if phi_hash(t, 3, 6666) < 0.5 { self.ghosts[i1].role } else { self.ghosts[i2].role };
+                    self.ghosts.push(GhostSignature {
+                        identity: self.ghosts[i1].identity,
+                        model: new_model,
+                        unresolved_contradiction: new_ur,
+                        role: new_role,
+                        age: 0,
+                    });
+                    println!("[t={}] Echo recombination: blending {} and {}, unresolved={:.3f}", t, i1, i2, new_ur);
+                }
+            }
+        }
+
+        let prob = (0.2f64).min(self.ghosts.len() as f64 * 0.02 + boredom * 0.1);
+        if phi_hash(t, 0, 999) < prob {
+            let candidate_indices: Vec<usize> = (0..self.ghosts.len())
+                .filter(|&i| self.ghosts[i].age > 3)
+                .collect();
+            let indices = if candidate_indices.is_empty() { (0..self.ghosts.len()).collect() } else { candidate_indices };
+
+            if indices.is_empty() { return; }
+            
+            let idx = indices[(phi_hash(t, 1, 1001) * indices.len() as f64) as usize % indices.len()];
+            let ghost = &mut self.ghosts[idx];
+
+            let x = (phi_hash(t, 2, 1002) * WORLD_SIZE as f64) as usize % WORLD_SIZE;
+            let y = (phi_hash(t, 3, 1003) * WORLD_SIZE as f64) as usize % WORLD_SIZE;
+
+            field[x][y][CH_ENERGY] += 0.12;
+            field[x][y][CH_UNKNOWN] = (field[x][y][CH_UNKNOWN] + 0.2).min(0.8);
+            field[x][y][CH_BINDING] += 0.35;
+
+            ghost.unresolved_contradiction *= 0.88;
+            ghost.age = 0;
+
+            if ghost.unresolved_contradiction < 0.02 {
+                self.ghosts.remove(idx);
+            } else {
+                println!("[t={}] Echo injected at ({},{}), role={}, unresolved={:.3f}", t, x, y, ghost.role, ghost.unresolved_contradiction);
+            }
+            self.last_echo_injection = t;
+        }
+        for g in &mut self.ghosts { g.age += 1; }
+    }
+}
+
+// =========================
+// PATTERN IMPL
+// =========================
+impl Pattern {
+    fn new(id: u32, cells: HashSet<(usize, usize)>, parent: Option<&Pattern>) -> Self {
+        let parent_id = parent.map(|p| p.id).unwrap_or(0);
+        let lineage_id = parent.map(|p| p.lineage_id).unwrap_or(id);
+        let generation = parent.map(|p| p.generation + 1).unwrap_or(0);
+        let lineage_age = parent.map(|p| p.lineage_age + 1).unwrap_or(0);
+
+        let identity = {
+            let mut arr = [0.0; 8];
+            for i in 0..8 { arr[i] = phi_hash(id as i64, i as i64, 100); }
+            arr
+        };
+
+        let (belief, prediction, model, self_model, unknown_belief, unknown_model) = if let Some(p) = parent {
+            let mut m = p.model;
+            for i in 0..5 { m[i] += MUTATION_STRENGTH_BASE * (phi_hash(id as i64, i as i64, 100) - 0.5); }
+            (p.belief, p.prediction, m, p.self_model, p.unknown_belief, p.unknown_model)
+        } else {
+            let mut m = [0.0; 5];
+            for i in 0..5 { m[i] = 0.1 * (phi_hash(id as i64, i as i64, 1) - 0.5); }
+            ([0.0; 5], [0.0; 5], m,
+             [0.1 * (phi_hash(id as i64, 101, 1) - 0.5), 0.1 * (phi_hash(id as i64, 102, 1) - 0.5)],
+             0.0, 0.1 * (phi_hash(id as i64, 99, 1) - 0.5))
+        };
+
+        let role = if let Some(p) = parent {
+            if phi_hash(id as i64, 888, 0) < 0.2 { (p.role + 1) % 2 } else { p.role }
+        } else {
+            if phi_hash(id as i64, 777, 0) < 0.5 { 0 } else { 1 }
+        };
+
+        let mut emotional_memory = HashMap::new();
+        if let Some(p) = parent {
+            emotional_memory.insert("gratitude".to_string(), p.emotional_memory.get("gratitude").unwrap_or(&0.0) * 0.9);
+            emotional_memory.insert("grief".to_string(), p.emotional_memory.get("grief").unwrap_or(&0.0) * 0.9);
+        } else {
+            emotional_memory.insert("gratitude".to_string(), 0.0);
+            emotional_memory.insert("grief".to_string(), 0.0);
+        }
+
+        let crisis_memory = if let Some(p) = parent {
+            (p.crisis_memory * 0.8).min(CRISIS_MEMORY_MAX)
+        } else { 0.0 };
+
+        let pred_error_history = if let Some(p) = parent {
+            let mut h = p.pred_error_history.clone();
+            if h.len() > 10 { h = h[h.len()-10..].to_vec(); }
+            h
+        } else { Vec::new() };
+
+        let genome = if let Some(p) = parent {
+            let mut g = p.genome.clone();
+            let mutations = [
+                MUTATION_STRENGTH_BASE * (phi_hash(id as i64, 11, 2) - 0.5),
+                MUTATION_STRENGTH_BASE * (phi_hash(id as i64, 12, 2) - 0.5),
+                MUTATION_STRENGTH_BASE * (phi_hash(id as i64, 13, 2) - 0.5),
+                MUTATION_STRENGTH_BASE * (phi_hash(id as i64, 14, 2) - 0.5),
+                MUTATION_STRENGTH_BASE * (phi_hash(id as i64, 15, 2) - 0.5),
+            ];
+            g.learning_rate = clip(g.learning_rate + mutations[0], 0.5, 2.0);
+            g.meta_learning_rate = clip(g.meta_learning_rate + mutations[1], 0.5, 2.0);
+            g.metabolic_cost = clip(g.metabolic_cost + mutations[2], 0.5, 2.0);
+            g.mobility = clip(g.mobility + mutations[3], 0.5, 2.0);
+            g.epistemic_strategy = clip(g.epistemic_strategy + mutations[4], 0.5, 2.0);
+            g
+        } else {
+            Genome {
+                learning_rate: MODEL_LEARNING_RATE * (0.8 + 0.4 * phi_hash(id as i64, 1, 3)),
+                meta_learning_rate: MODEL_LEARNING_RATE * 0.5 * (0.8 + 0.4 * phi_hash(id as i64, 2, 3)),
+                metabolic_cost: 0.005 + 0.005 * phi_hash(id as i64, 3, 4),
+                mobility: 0.1 + 0.05 * phi_hash(id as i64, 4, 5),
+                epistemic_strategy: phi_hash(id as i64, 5, 6),
+            }
+        };
+
+        let mut bio = Vec::new();
+        bio.push(BioEvent { t: 0, event_type: "birth".to_string(), details: HashMap::new() });
+
+        Pattern {
+            id, cells, energy: 0.3, vorticity: 0.0, age: 0, alive: true,
+            parent_id, lineage_id, generation, lineage_age,
+            identity, belief, prediction, model,
+            self_state_prediction: [0.0; 2], self_model, self_surprise: MIN_ACTIVE,
+            spirit_gap: 0.0,
+            soul_weight: parent.map(|p| p.soul_weight * 0.9).unwrap_or(0.5),
+            soul_momentum: 0.0,
+            body_memory: parent.map(|p| p.body_memory * 0.95).unwrap_or(0.0),
+            unresolved_contradiction: parent.map(|p| p.unresolved_contradiction * 0.9).unwrap_or(0.1),
+            role, unknown_belief, unknown_model, unknown_prediction: 0.0,
+            epistemic_load: 0.0, prev_epistemic_load: 0.0, crisis_memory,
+            memory_trace: Vec::new(), self_consistency: 0.0, coherence: 1.0,
+            confidence: 0.0, given_trigger: false, given_count: 0, given_cooldown: 0,
+            surprise_signal: 0.0, emotional_memory,
+            semantic_state: "neutral".to_string(), in_scream: false,
+            local_phase: "MODEL".to_string(),
+            dream_timer: (phi_hash(id as i64, 0, 777) * 30.0) as i32 + 30,
+            dream_interval: (phi_hash(id as i64, 1, 777) * 40.0) as i32 + 40,
+            dream_duration: 3, in_dream: false, dream_progress: 0, scar_dream: 0.0,
+            pending_spore: None,
+            last_speciation_age: -(SPEACIATION_COOLDOWN * 2),
+            biography: bio,
+            world_state: [0.0; 8], world_model: [[0.0; 8]; 4], last_action: 0,
+            goals: Vec::new(), intent: None, intent_age: 0, intent_commitment: 0.0,
+            concepts: HashMap::new(), concept_history: Vec::new(),
+            epistemic_scar: 0.0, alarm_level: 0.0,
+            last_intent_switch_age: -INTENT_SWITCH_COOLDOWN,
+            protection_level: 1.0,
+            pred_error: MIN_ACTIVE, pred_error_history,
+            unknown_error: 0.0, compression: 0.0, fitness: 0.0,
+            error_trend: 0.0, cognitive_tension: MIN_ACTIVE, genome,
+        }
+    }
+
+    fn log_event(&mut self, event_type: &str) {
+        self.biography.push(BioEvent { t: self.age, event_type: event_type.to_string(), details: HashMap::new() });
+        if self.biography.len() > 10 { self.biography.remove(0); }
+    }
+
+    fn update_properties(&mut self, field: &FieldLayer) {
+        if self.cells.is_empty() { self.alive = false; return; }
+        let energies: Vec<f64> = self.cells.iter().map(|(x, y)| field[*x][*y][CH_ENERGY]).collect();
+        self.energy = safe_mean(&energies, 0.1);
+        let vort: Vec<f64> = self.cells.iter().map(|(x, y)| field[*x][*y][CH_VORTICITY]).collect();
+        self.vorticity = safe_mean(&vort, 0.0);
+    }
+
+    fn generate_goals(&mut self, field: &FieldLayer) {
+        let mut new_goals: Vec<Goal> = Vec::new();
+
+        if self.epistemic_load > 0.3 {
+            let mut high_unknown = Vec::new();
+            for x in 0..WORLD_SIZE {
+                for y in 0..WORLD_SIZE {
+                    if field[x][y][CH_UNKNOWN] > 0.3 {
+                        high_unknown.push((x, y));
+                    }
+                }
+            }
+            if !high_unknown.is_empty() {
+                let idx = (phi_hash(self.id as i64, self.age as i64, 222) * high_unknown.len() as f64) as usize % high_unknown.len();
+                new_goals.push(Goal {
+                    goal_type: "explore".to_string(),
+                    priority: self.epistemic_load,
+                    target: Some(high_unknown[idx]),
+                    age: 0,
+                    persistence: 50,
+                });
+            }
+        }
+
+        let grat = *self.emotional_memory.get("gratitude").unwrap_or(&0.0);
+        let grief = *self.emotional_memory.get("grief").unwrap_or(&0.0);
+
+        if grief > 0.4 {
+            new_goals.push(Goal {
+                goal_type: "seek_help".to_string(),
+                priority: grief,
+                target: None,
+                age: 0,
+                persistence: 30,
+            });
+        }
+
+        if grat > 0.5 && self.coherence > 0.7 {
+            new_goals.push(Goal {
+                goal_type: "cooperate".to_string(),
+                priority: grat,
+                target: None,
+                age: 0,
+                persistence: 40,
+            });
+        }
+
+        if grat > 0.8 && self.coherence > 0.6 {
+            let priority = 1.2 + 0.3 * (grat - 0.8);
+            new_goals.push(Goal {
+                goal_type: "explore".to_string(),
+                priority,
+                target: None,
+                age: 0,
+                persistence: 20,
+            });
+        }
+
+        if grief > 0.7 && self.soul_weight < 0.4 {
+            new_goals.push(Goal {
+                goal_type: "explore".to_string(),
+                priority: 1.1,
+                target: None,
+                age: 0,
+                persistence: 15,
+            });
+        }
+
+        self.goals.retain(|g| g.age < g.persistence);
+        for g in &mut self.goals { g.age += 1; }
+
+        let existing_types: HashSet<String> = self.goals.iter().map(|g| g.goal_type.clone()).collect();
+        for goal in new_goals {
+            if !existing_types.contains(&goal.goal_type) {
+                self.goals.push(goal);
+            }
+        }
+    }
+
+    fn update_intent(&mut self) {
+        if self.goals.is_empty() {
+            self.intent = None;
+            self.intent_commitment *= INTENT_COMMITMENT_DECAY;
+            return;
+        }
+
+        self.goals.sort_by(|a, b| b.priority.partial_cmp(&a.priority).unwrap());
+        let best = &self.goals[0];
+
+        if self.intent.is_none() {
+            if self.age - self.last_intent_switch_age >= INTENT_SWITCH_COOLDOWN {
+                self.intent = Some(best.clone());
+                self.intent_commitment = best.priority;
+                self.last_intent_switch_age = self.age;
+                self.log_event("intent_switch");
+            }
+        } else {
+            self.intent_commitment = 0.9 * self.intent_commitment + 0.1 * best.priority;
+            if best.priority > self.intent_commitment * 1.5
+                && self.age - self.last_intent_switch_age >= INTENT_SWITCH_COOLDOWN
+            {
+                self.intent = Some(best.clone());
+                self.last_intent_switch_age = self.age;
+                self.log_event("intent_switch");
+            }
+        }
+    }
+
+    fn apply_intent_actions(&self, field: &mut FieldLayer) {
+        if let Some(intent) = &self.intent {
+            match intent.goal_type.as_str() {
+                "explore" => {
+                    for (x, y) in &self.cells {
+                        field[*x][*y][CH_SIGNAL_INVITATION] = (field[*x][*y][CH_SIGNAL_INVITATION] + 0.1).min(1.0);
+                        field[*x][*y][CH_INTENT_EXPLORE] = (field[*x][*y][CH_INTENT_EXPLORE] + 0.2).min(1.0);
+                    }
+                }
+                "seek_help" => {
+                    for (x, y) in &self.cells {
+                        field[*x][*y][CH_SIGNAL_INVITATION] = (field[*x][*y][CH_SIGNAL_INVITATION] + 0.25).min(1.0);
+                        field[*x][*y][CH_SIGNAL_GRIEF] = (field[*x][*y][CH_SIGNAL_GRIEF] + 0.1).min(1.0);
+                        field[*x][*y][CH_INTENT_SEEK_HELP] = (field[*x][*y][CH_INTENT_SEEK_HELP] + 0.3).min(1.0);
+                    }
+                }
+                "cooperate" => {
+                    for (x, y) in &self.cells {
+                        field[*x][*y][CH_BINDING] = (field[*x][*y][CH_BINDING] + 0.15).min(1.0);
+                        field[*x][*y][CH_SIGNAL_GRATITUDE] = (field[*x][*y][CH_SIGNAL_GRATITUDE] + 0.1).min(1.0);
+                        field[*x][*y][CH_INTENT_COOPERATE] = (field[*x][*y][CH_INTENT_COOPERATE] + 0.3).min(1.0);
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+
+    fn update_phase(&mut self, field: &FieldLayer) {
+        let mut sum_unknown = 0.0;
+        for x in 0..WORLD_SIZE {
+            for y in 0..WORLD_SIZE {
+                sum_unknown += field[x][y][CH_UNKNOWN];
+            }
+        }
+        let avg_unknown = sum_unknown / (WORLD_SIZE * WORLD_SIZE) as f64;
+
+        self.local_phase = if self.in_dream {
+            "DREAM".to_string()
+        } else if self.crisis_memory > 0.5 && self.soul_weight < 0.4 {
+            "CRISIS".to_string()
+        } else if self.pred_error < 0.05 && self.coherence > 0.9 {
+            "COMPRESS".to_string()
+        } else if avg_unknown > 0.4 {
+            "EXPLORE".to_string()
+        } else if self.cognitive_tension < 0.01 {
+            "SILENCE".to_string()
+        } else {
+            "MODEL".to_string()
+        };
+    }
+
+    fn update_semantic_state(&mut self, field: &FieldLayer) {
+        let grat = *self.emotional_memory.get("gratitude").unwrap_or(&0.0);
+        let grief = *self.emotional_memory.get("grief").unwrap_or(&0.0);
+        let mut warn = 0.0;
+        let mut inv = 0.0;
+        let mut alarm = 0.0;
+        let mut curios = 0.0;
+
+        for (x, y) in &self.cells {
+            warn = warn.max(field[*x][*y][CH_SIGNAL_WARNING]);
+            inv = inv.max(field[*x][*y][CH_SIGNAL_INVITATION]);
+            alarm = alarm.max(field[*x][*y][CH_SIGNAL_ALARM]);
+            curios = curios.max(field[*x][*y][CH_SIGNAL_CURIOSITY]);
+        }
+
+        self.semantic_state = if self.in_dream {
+            "dreaming".to_string()
+        } else if grat > 0.15 && warn > 0.05 {
+            "grateful_but_cautious".to_string()
+        } else if grief > 0.15 && inv > 0.05 {
+            "seeking_comfort".to_string()
+        } else if alarm > 0.15 && curios > 0.05 {
+            "exploring_danger".to_string()
+        } else if grat > 0.15 && self.cognitive_tension < 0.25 {
+            "contentment".to_string()
+        } else if self.in_scream {
+            "screaming".to_string()
+        } else {
+            "neutral".to_string()
+        };
+    }
+
+    fn update_dream(&mut self, field: &FieldLayer) {
+        if self.in_dream {
+            self.dream_progress += 1;
+            if self.dream_progress >= self.dream_duration {
+                self.in_dream = false;
+                self.dream_progress = 0;
+                self.dream_timer = 0;
+                self.dream_interval = (phi_hash(self.id as i64, self.age as i64, 888) * 40.0) as i32 + 40;
+                self.log_event("dream_exit");
+                if self.soul_weight > 0.6 && self.coherence > 0.9 && phi_hash(self.id as i64, self.age as i64, 999) < 0.2 {
+                    for x in 0..WORLD_SIZE {
+                        for y in 0..WORLD_SIZE {
+                            if field[x][y][CH_OWNER] < 0.5 && field[x][y][CH_ENERGY] > 0.05 {
+                                self.pending_spore = Some((x, y, self.scar_dream * 0.5));
+                                self.log_event("spore_emitted");
+                                break;
+                            }
+                        }
+                        if self.pending_spore.is_some() { break; }
+                    }
+                }
+            }
+        } else {
+            self.dream_timer += 1;
+            if self.dream_timer >= self.dream_interval && self.soul_weight > 0.3 && self.local_phase != "CRISIS" {
+                self.in_dream = true;
+                self.dream_progress = 0;
+                self.log_event("dream_enter");
+            }
+        }
+    }
+
+    fn apply_given_operator(&mut self, field: &mut FieldLayer) {
+        self.log_event("given_triggered");
+        self.pred_error = (self.pred_error + 0.2).min(MAX_METRIC);
+        self.confidence = 1.0 / (1.0 + self.pred_error);
+        self.given_count += 1;
+        self.given_trigger = true;
+        self.given_cooldown = GIVEN_COOLDOWN;
+        self.crisis_memory = (self.crisis_memory + 0.1).min(CRISIS_MEMORY_MAX);
+        self.body_memory += 0.05;
+        for (x, y) in &self.cells {
+            field[*x][*y][CH_UNKNOWN] = (field[*x][*y][CH_UNKNOWN] + 0.15).min(0.8);
+            field[*x][*y][CH_CRISIS] = (field[*x][*y][CH_CRISIS] + 0.1).min(1.0);
+            field[*x][*y][CH_BINDING] = (field[*x][*y][CH_BINDING] + 0.25).min(1.0);
+        }
+    }
+
+    fn apply_scream(&mut self, field: &mut FieldLayer) {
+        if !self.in_scream {
+            self.log_event("scream_enter");
+            self.in_scream = true;
+            self.soul_weight = (self.soul_weight - 0.2).max(0.05);
+            self.unresolved_contradiction = (self.unresolved_contradiction + 0.3).min(1.0);
+            self.crisis_memory = (self.crisis_memory + 0.15).min(CRISIS_MEMORY_MAX);
+            for (x, y) in &self.cells {
+                field[*x][*y][CH_SCAR] = (field[*x][*y][CH_SCAR] + SCREAM_SCAR_IMPACT).min(1.0);
+                field[*x][*y][CH_BINDING] = (field[*x][*y][CH_BINDING] + SCREAM_BINDING_BOOST).min(1.0);
+                field[*x][*y][CH_ENERGY] = (field[*x][*y][CH_ENERGY] - SCREAM_ENERGY_PENALTY).max(-0.2);
+                field[*x][*y][CH_CRISIS] = (field[*x][*y][CH_CRISIS] + 0.3).min(1.0);
+            }
+        }
+    }
+
+    fn update_model(&mut self, field: &mut FieldLayer, lineage_counts: Option<&HashMap<u32, usize>>, given_counter: Option<&mut usize>, scar: &ScarField) {
+        if self.cells.is_empty() { return; }
+        if self.model.iter().any(|x| x.is_nan() || x.is_infinite()) {
+            self.model = [0.0; 5];
+            self.prediction = [0.0; 5];
+            self.belief = [0.0; 5];
+        }
+
+        for i in 0..5 {
+            self.belief[i] += (phi_hash(self.id as i64, self.age as i64, 8000 + i as i64) - 0.5) * 0.001;
+        }
+
+        if self.in_dream {
+            self.update_dream(field);
+            self.pred_error = (self.pred_error * METRIC_DECAY).max(MIN_ACTIVE);
+            return;
+        }
+
+        let mut avg_real = [0.0; 5];
+        let mut avg_unknown = 0.0;
+        let mut avg_crisis_mem = 0.0;
+        let mut avg_binding = 0.0;
+        let mut local_gratitude = 0.0;
+        let mut local_grief = 0.0;
+        let mut neighbor_gratitude = 0.0;
+        let mut neighbor_grief = 0.0;
+        let mut neighbor_count = 0;
+        let n = self.cells.len() as f64;
+
+        for (x, y) in &self.cells {
+            let strategy = self.genome.epistemic_strategy;
+            let crisis_factor = 1.0 + field[*x][*y][CH_CRISIS].min(1.0) * 0.5;
+            let noise_factor = if strategy < 0.33 {
+                1.0
+            } else if strategy < 0.66 {
+                1.0 + field[*x][*y][CH_UNKNOWN].min(0.8) * (1.0 - self.unknown_model)
+            } else {
+                1.0 + field[*x][*y][CH_UNKNOWN].min(0.8) * 1.5
+            };
+
+            for i in 0..5 {
+                avg_real[i] += field[*x][*y][i].min(10.0).max(-10.0) * noise_factor * crisis_factor;
+            }
+            avg_unknown += field[*x][*y][CH_UNKNOWN].min(0.8);
+            avg_crisis_mem += field[*x][*y][CH_CRISIS].min(1.0);
+            avg_binding += field[*x][*y][CH_BINDING].min(1.0);
+            local_gratitude += field[*x][*y][CH_SIGNAL_GRATITUDE];
+            local_grief += field[*x][*y][CH_SIGNAL_GRIEF];
+
+            for (dx, dy) in &[(-1i32,0i32),(1,0),(0,-1),(0,1)] {
+                let nx = ((*x as i32 + dx + WORLD_SIZE as i32) % WORLD_SIZE as i32) as usize;
+                let ny = ((*y as i32 + dy + WORLD_SIZE as i32) % WORLD_SIZE as i32) as usize;
+                if field[nx][ny][CH_OWNER] > 0.5 {
+                    neighbor_gratitude += field[nx][ny][CH_SIGNAL_GRATITUDE];
+                    neighbor_grief += field[nx][ny][CH_SIGNAL_GRIEF];
+                    neighbor_count += 1;
+                }
+            }
+        }
+
+        for i in 0..5 { avg_real[i] /= n; }
+        avg_unknown /= n;
+        avg_crisis_mem /= n;
+        avg_binding /= n;
+        local_gratitude = (local_gratitude / n).min(0.5);
+        local_grief /= n;
+
+        let current_grat = *self.emotional_memory.get("gratitude").unwrap_or(&0.0);
+        let current_grief = *self.emotional_memory.get("grief").unwrap_or(&0.0);
+        self.emotional_memory.insert("gratitude".to_string(),
+            EMOTIONAL_MEMORY_DECAY * current_grat + (1.0 - EMOTIONAL_MEMORY_DECAY) * local_gratitude);
+        self.emotional_memory.insert("grief".to_string(),
+            EMOTIONAL_MEMORY_DECAY * current_grief + (1.0 - EMOTIONAL_MEMORY_DECAY) * local_grief);
+
+        if neighbor_count > 0 {
+            neighbor_gratitude /= neighbor_count as f64;
+            neighbor_grief /= neighbor_count as f64;
+            let current_grat = *self.emotional_memory.get("gratitude").unwrap_or(&0.0);
+            let current_grief = *self.emotional_memory.get("grief").unwrap_or(&0.0);
+            self.emotional_memory.insert("gratitude".to_string(),
+                EMOTIONAL_INDIVIDUALITY * current_grat + (1.0 - EMOTIONAL_INDIVIDUALITY) * neighbor_gratitude);
+            self.emotional_memory.insert("grief".to_string(),
+                EMOTIONAL_INDIVIDUALITY * current_grief + (1.0 - EMOTIONAL_INDIVIDUALITY) * neighbor_grief);
+        }
+
+        let dec = emotional_decay_factor(self.age);
+        let grat = clip(*self.emotional_memory.get("gratitude").unwrap_or(&0.0) * dec, 0.0, 1.0);
+        let grief = clip(*self.emotional_memory.get("grief").unwrap_or(&0.0) * dec, 0.0, 1.0);
+        self.emotional_memory.insert("gratitude".to_string(), grat);
+        self.emotional_memory.insert("grief".to_string(), grief);
+
+        self.crisis_memory = (CRISIS_MEMORY_DECAY * self.crisis_memory + (1.0 - CRISIS_MEMORY_DECAY) * avg_crisis_mem).min(CRISIS_MEMORY_MAX);
+        self.epistemic_load = avg_unknown;
+
+        let error: [f64; 5] = {
+            let mut e = [0.0; 5];
+            for i in 0..5 { e[i] = (avg_real[i] - self.prediction[i]).min(10.0).max(-10.0); }
+            e
+        };
+        let current_error = error.iter().map(|x| x * x).sum::<f64>() / 5.0;
+
+        let raw_pred_error = PRED_ERROR_LEARNING * self.pred_error + 0.1 * current_error + SELF_SURPRISE_FACTOR * self.self_surprise;
+        let noise_val = (phi_hash(self.id as i64, (self.age + 500) as i64, 500) - 0.5) * BASE_NOISE * 2.0;
+        self.pred_error = clip(squash(raw_pred_error) + noise_val, MIN_ACTIVE, MAX_METRIC);
+
+        for i in 0..5 {
+            self.belief[i] = clip(self.belief[i] + 0.05 * error[i], -10.0, 10.0);
+            self.prediction[i] = clip(self.belief[i] + self.model[i], -10.0, 10.0);
+            self.model[i] = clip(self.model[i] + self.genome.learning_rate * error[i], -10.0, 10.0);
+        }
+
+        self.self_consistency = {
+            let mut sum = 0.0;
+            for i in 0..5 { let d = self.prediction[i] - self.belief[i]; sum += d * d; }
+            sum.sqrt()
+        };
+        self.coherence = 1.0 / (1.0 + self.self_consistency);
+        self.confidence = squash(1.0 / (1.0 + self.pred_error));
+
+        if self.coherence > ANTI_COHERENCE_THRESHOLD && phi_hash(self.id as i64, self.age as i64, 9999) < 0.1 {
+            for i in 0..5 {
+                self.belief[i] += (phi_hash(self.id as i64, self.age as i64, 8888 + i as i64) - 0.5) * ANTI_COHERENCE_SHAKE;
+            }
+        }
+
+        if self.given_cooldown > 0 {
+            self.given_cooldown -= 1;
+            self.given_trigger = false;
+        } else {
+            let given_allowed = given_counter.as_ref().map(|c| **c < MAX_GIVEN_PER_STEP).unwrap_or(true);
+            if given_allowed && self.age >= GIVEN_MIN_AGE && self.confidence > GIVEN_CONFIDENCE_THRESHOLD && self.given_cooldown <= 0 {
+                self.apply_given_operator(field);
+                if let Some(c) = given_counter { **c += 1; }
+            }
+        }
+
+        let raw_tension = self.pred_error + 0.1 * self.self_surprise + 0.1 * self.self_consistency;
+        let noise_tension = (phi_hash(self.id as i64, (self.age + 700) as i64, 700) - 0.5) * BASE_NOISE * 2.0;
+        self.cognitive_tension = clip(squash(raw_tension) + noise_tension, MIN_ACTIVE, MAX_METRIC);
+
+        let error_penalty = 1.0 / (1.0 + self.pred_error * 5.0);
+        let target_soul = clip(error_penalty * (0.5 + self.coherence * 0.5 - self.unresolved_contradiction * 0.3), 0.0, 1.0);
+        self.soul_weight = clip((1.0 - SOUL_WEIGHT_GAIN_RATE) * self.soul_weight + SOUL_WEIGHT_GAIN_RATE * target_soul, 0.0, 1.0);
+
+        self.fitness = 1.0 / (1.0 + self.pred_error) + 0.5 * (0.0f64).max(-self.error_trend) + 0.2 * self.coherence - 0.1 * self.body_memory;
+        self.fitness += GRATITUDE_COOPERATION_BONUS * local_gratitude;
+
+        if self.crisis_memory > SCREAM_CRISIS_THRESHOLD && self.soul_weight < SCREAM_SOUL_THRESHOLD && phi_hash(self.id as i64, self.age as i64, 111) < SCREAM_PROB {
+            self.apply_scream(field);
+        }
+
+        let rad_grat = EMOTIONAL_RADIATION_STRENGTH * grat;
+        let rad_grief = EMOTIONAL_RADIATION_STRENGTH * grief;
+        for (x, y) in &self.cells {
+            field[*x][*y][CH_SIGNAL_GRATITUDE] = (field[*x][*y][CH_SIGNAL_GRATITUDE] + rad_grat).min(1.0);
+            field[*x][*y][CH_SIGNAL_GRIEF] = (field[*x][*y][CH_SIGNAL_GRIEF] + rad_grief).min(1.0);
+        }
+
+        self.generate_goals(field);
+        self.update_intent();
+        self.apply_intent_actions(field);
+        self.update_phase(field);
+        self.update_semantic_state(field);
+
+        if self.age < 30 {
+            self.protection_level = 1.0;
+        } else if self.age < 45 {
+            self.protection_level = 1.0 - (self.age - 30) as f64 / 15.0;
+        } else {
+            self.protection_level = 0.0;
+        }
+
+        self.pred_error = (self.pred_error * METRIC_DECAY).max(MIN_ACTIVE);
+        self.self_surprise = (self.self_surprise * METRIC_DECAY).max(MIN_ACTIVE);
+        self.cognitive_tension = (self.cognitive_tension * METRIC_DECAY).max(MIN_ACTIVE);
+    }
+
+    fn should_die(&self) -> bool {
+        if self.cells.is_empty() { return true; }
+        if self.pred_error > PRED_ERROR_THRESHOLD {
+            if self.given_trigger && phi_hash(self.id as i64, self.age as i64) < 0.15 { return false; }
+            if self.coherence > 0.8 && phi_hash(self.id as i64, self.age as i64) < 0.3 { return false; }
+            if phi_hash(self.id as i64, self.age as i64) < 0.3 { return true; }
+        }
+        if self.protection_level > 0.2 {
+            let death_prob = 0.1 * (1.0 - self.protection_level);
+            if phi_hash(self.id as i64, self.age as i64, 777) < death_prob { return true; }
+            return false;
+        }
+        if self.soul_weight < 0.1 { return true; }
+        if self.unresolved_contradiction < 0.01 { return true; }
+        if self.cells.len() < 2 && self.age > 5 { return true; }
+        if self.age > 120 && self.energy < 0.05 { return true; }
+        false
+    }
+
+    fn metabolic_tax(&self, field: &mut FieldLayer, hunger_mult: f64) -> f64 {
+        let efficiency = 1.0 / (1.0 + self.pred_error);
+        let mut cost = self.genome.metabolic_cost * self.cells.len() as f64 * (2.0 - efficiency) * hunger_mult;
+        if *self.emotional_memory.get("grief").unwrap_or(&0.0) > EMOTIONAL_GRIEF_THRESHOLD {
+            cost *= 1.0 + GRIEF_METABOLIC_PENALTY * (self.emotional_memory.get("grief").unwrap_or(&0.0) - EMOTIONAL_GRIEF_THRESHOLD);
+        }
+        for (x, y) in &self.cells {
+            let take = field[*x][*y][CH_ENERGY].max(0.0).min(cost / self.cells.len() as f64);
+            field[*x][*y][CH_ENERGY] -= take;
+            cost -= take;
+        }
+        cost
+    }
+
+    fn can_divide(&self) -> bool {
+        self.pred_error < DIVIDE_ERROR_THRESHOLD && self.energy > PATTERN_ENERGY_THRESHOLD
+            && self.cells.len() >= DIVIDE_MIN_SIZE && self.alive && self.soul_weight > 0.2 && !self.in_dream
+    }
+
+    fn divide(&mut self, field: &FieldLayer, next_id: u32) -> Option<Pattern> {
+        let mut xs: Vec<usize> = self.cells.iter().map(|(x, _)| *x).collect();
+        xs.sort();
+        let median_x = xs[xs.len() / 2];
+        let child1_cells: HashSet<(usize, usize)> = self.cells.iter().filter(|(x, _)| *x < median_x).cloned().collect();
+        let child2_cells: HashSet<(usize, usize)> = self.cells.iter().filter(|(x, _)| *x >= median_x).cloned().collect();
+        if child1_cells.len() < 3 || child2_cells.len() < 3 { return None; }
+        self.cells = child1_cells;
+        let mut child = Pattern::new(next_id, child2_cells, Some(self));
+        for i in 0..5 {
+            child.belief[i] += 0.02 * (phi_hash(next_id as i64, i as i64, 200) - 0.5);
+        }
+        Some(child)
+    }
+
+    fn compete(&mut self, other: &mut Pattern, field: &mut FieldLayer) {
+        if self.protection_level > 0.5 || other.protection_level > 0.5 { return; }
+        let overlap: HashSet<(usize, usize)> = self.cells.intersection(&other.cells).cloned().collect();
+        if overlap.is_empty() { return; }
+
+        let mut sum_unk = 0.0;
+        for x in 0..WORLD_SIZE { for y in 0..WORLD_SIZE { sum_unk += field[x][y][CH_UNKNOWN]; } }
+        let avg_unk = sum_unk / (WORLD_SIZE * WORLD_SIZE) as f64;
+
+        let mut my_power = self.fitness * self.energy.max(0.0);
+        let mut other_power = other.fitness * other.energy.max(0.0);
+
+        if self.role == 1 {
+            my_power *= 1.0 + avg_unk;
+        } else {
+            let bonus = 1.0 + (0.2f64 - avg_unk).max(0.0) * 0.8;
+            my_power *= bonus * if self.local_phase == "MODEL" { 1.1 } else { 1.0 };
+        }
+        if other.role == 1 {
+            other_power *= 1.0 + avg_unk;
+        } else {
+            let bonus = 1.0 + (0.2f64 - avg_unk).max(0.0) * 0.8;
+            other_power *= bonus * if other.local_phase == "MODEL" { 1.1 } else { 1.0 };
+        }
+
+        let grat_self = *self.emotional_memory.get("gratitude").unwrap_or(&0.0);
+        if grat_self > EMOTIONAL_GRATITUDE_THRESHOLD {
+            my_power *= 1.0 - GRATITUDE_AGGRESSION_REDUCTION * (grat_self - EMOTIONAL_GRATITUDE_THRESHOLD);
+        }
+        let grat_other = *other.emotional_memory.get("gratitude").unwrap_or(&0.0);
+        if grat_other > EMOTIONAL_GRATITUDE_THRESHOLD {
+            other_power *= 1.0 - GRATITUDE_AGGRESSION_REDUCTION * (grat_other - EMOTIONAL_GRATITUDE_THRESHOLD);
+        }
+
+        let winner_id = if my_power > other_power { self.id } else { other.id };
+
+        for cell in &overlap {
+            if phi_hash(cell.0 as i64, cell.1 as i64, self.id as i64) < 0.5 {
+                if winner_id == self.id {
+                    other.cells.remove(cell);
+                    self.cells.insert(*cell);
+                } else {
+                    self.cells.remove(cell);
+                    other.cells.insert(*cell);
+                }
+                field[cell.0][cell.1][CH_OWNER] = winner_id as f64;
+            }
+        }
+    }
+}
+
+// =========================
+// ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+// =========================
+fn calculate_boredom(patterns: &[Pattern], field: &FieldLayer) -> f64 {
+    let mut err_history = Vec::new();
+    for p in patterns {
+        if p.alive && !p.pred_error_history.is_empty() {
+            let start = if p.pred_error_history.len() > BOREDOM_WINDOW { p.pred_error_history.len() - BOREDOM_WINDOW } else { 0 };
+            err_history.extend_from_slice(&p.pred_error_history[start..]);
+        }
+    }
+    if err_history.is_empty() { return 0.0; }
+    let avg_recent_err = err_history.iter().sum::<f64>() / err_history.len() as f64;
+
+    let mut sum_unknown = 0.0;
+    for x in 0..WORLD_SIZE { for y in 0..WORLD_SIZE { sum_unknown += field[x][y][CH_UNKNOWN]; } }
+    let avg_unknown = sum_unknown / (WORLD_SIZE * WORLD_SIZE) as f64;
+
+    let tensions: Vec<f64> = patterns.iter().filter(|p| p.alive).map(|p| p.cognitive_tension).collect();
+    let avg_tension = if tensions.is_empty() { 0.01 } else { tensions.iter().sum::<f64>() / tensions.len() as f64 };
+
+    let mut boredom = 0.0;
+    if avg_recent_err < BOREDOM_ERR_THRESHOLD { boredom += 0.4; }
+    if avg_unknown < BOREDOM_UNKNOWN_THRESHOLD { boredom += 0.4; }
+    if avg_tension < BOREDOM_TENSION_THRESHOLD { boredom += 0.2; }
+    boredom
+}
+
+fn crisis_injection(field: &mut FieldLayer, t: i64) {
+    if t % CRISIS_PERIOD as i64 == 0 && t > 0 {
+        let intensity = CRISIS_INTENSITY * (1.0 + 0.5 * (t as f64 * 0.01).sin());
+        for x in 0..WORLD_SIZE {
+            for y in 0..WORLD_SIZE {
+                if phi_hash(x as i64, y as i64, t) < intensity {
+                    field[x][y][CH_ENERGY] += (phi_hash(x as i64, y as i64, t + 1) - 0.5) * 0.2;
+                    field[x][y][CH_UNKNOWN] = (field[x][y][CH_UNKNOWN] + 0.15).min(0.8);
+                    field[x][y][CH_CRISIS] = (field[x][y][CH_CRISIS] + 0.3).min(1.0);
+                }
+            }
+        }
+    }
+}
+
+fn anti_conformist_injection(patterns: &mut [Pattern], t: i64) {
+    if t % ANTI_CONFORMIST_INTERVAL as i64 != 0 || t == 0 { return; }
+    let alive: Vec<usize> = (0..patterns.len()).filter(|&i| patterns[i].alive && patterns[i].age >= MIN_AGE_FOR_ANTI_CONFORMIST).collect();
+    if alive.is_empty() { return; }
+
+    let idx = alive[(phi_hash(t, 0, 777) * alive.len() as f64) as usize % alive.len()];
+    let mutant = &mut patterns[idx];
+
+    mutant.emotional_memory.insert("gratitude".to_string(), 0.1);
+    mutant.emotional_memory.insert("grief".to_string(), 0.1);
+    mutant.semantic_state = "neutral".to_string();
+    mutant.intent = None;
+    mutant.intent_commitment = 0.0;
+    mutant.goals = vec![Goal {
+        goal_type: "explore".to_string(),
+        priority: 1.5,
+        target: None,
+        age: 0,
+        persistence: 40,
+    }];
+    mutant.last_intent_switch_age = mutant.age;
+    mutant.log_event("anti_conformist_injected");
+    println!("[t={}] ANTI-CONFORMIST: Pattern {} turned explorer (age={})", t, mutant.id, mutant.age);
+}
+
+fn process_spores(patterns: &mut Vec<Pattern>, field: &FieldLayer) -> Vec<Pattern> {
+    let mut new_patterns = Vec::new();
+
+    for i in 0..patterns.len() {
+        if let Some((sx, sy, _)) = patterns[i].pending_spore {
+            if field[sx][sy][CH_OWNER] < 0.5 {
+                let id = next_id();
+                let mut cells = HashSet::new();
+                cells.insert((sx, sy));
+                let child = Pattern::new(id, cells, Some(&patterns[i]));
+                new_patterns.push(child);
+            }
+            patterns[i].pending_spore = None;
+        }
+    }
+    new_patterns
+}
+
+fn resolve_competitions_spatial(patterns: &mut Vec<Pattern>, field: &mut FieldLayer) {
+    let n = patterns.len();
+
+    for i in 0..n {
+        if !patterns[i].alive { continue; }
+        for j in i+1..n {
+            if !patterns[j].alive { continue; }
+
+            let overlap: bool = patterns[i].cells.iter().any(|c| patterns[j].cells.contains(c));
+            if overlap {
+                let (left, right) = patterns.split_at_mut(j);
+                left[i].compete(&mut right[0], field);
+            }
+        }
+    }
+}
+
+fn field_dynamics(field: &mut FieldLayer, scar: &mut ScarField, t: i64) {
+    let mut new_energy = vec![vec![0.0f64; WORLD_SIZE]; WORLD_SIZE];
+    for x in 0..WORLD_SIZE {
+        for y in 0..WORLD_SIZE {
+            let mut sum = field[x][y][CH_ENERGY] * 4.0;
+            for (dx, dy) in &[(-1i32, 0i32), (1, 0), (0, -1), (0, 1)] {
+                let nx = ((x as i32 + dx + WORLD_SIZE as i32) % WORLD_SIZE as i32) as usize;
+                let ny = ((y as i32 + dy + WORLD_SIZE as i32) % WORLD_SIZE as i32) as usize;
+                sum += field[nx][ny][CH_ENERGY];
+            }
+            new_energy[x][y] = sum / 8.0;
+        }
+    }
+
+    for x in 0..WORLD_SIZE {
+        for y in 0..WORLD_SIZE {
+            scar[x][y] *= FIELD_DECAY;
+            field[x][y][CH_SCAR] = scar[x][y].min(SCAR_SATURATION);
+            field[x][y][CH_ENERGY] = new_energy[x][y];
+            field[x][y][CH_ENERGY] += HEARTBEAT_AMPLITUDE * (t as f64 * HEARTBEAT_FREQ + field[x][y][CH_VORTICITY]).sin();
+            field[x][y][CH_ENERGY] += SCAR_ENERGY_COUPLING * field[x][y][CH_SCAR];
+            field[x][y][CH_ENERGY] += VORTICITY_COUPLING * field[x][y][CH_VORTICITY];
+        }
+    }
+}
+
+fn collect_metrics(patterns: &[Pattern], field: &FieldLayer, t: i64) -> String {
+    let alive: Vec<&Pattern> = patterns.iter().filter(|p| p.alive).collect();
+    if alive.is_empty() { return format!("[t={}] NO PATTERNS ALIVE", t); }
+
+    let err = alive.iter().map(|p| p.pred_error).sum::<f64>() / alive.len() as f64;
+    let soul = alive.iter().map(|p| p.soul_weight).sum::<f64>() / alive.len() as f64;
+    let lineages: HashSet<u32> = alive.iter().map(|p| p.lineage_id).collect();
+
+    let mut binding_sum = 0.0;
+    for x in 0..WORLD_SIZE { for y in 0..WORLD_SIZE { binding_sum += field[x][y][CH_BINDING]; } }
+    let binding = binding_sum / (WORLD_SIZE * WORLD_SIZE) as f64;
+
+    let mut states: HashMap<String, usize> = HashMap::new();
+    for p in &alive {
+        *states.entry(p.semantic_state.clone()).or_insert(0) += 1;
+    }
+
+    let mut intents: HashMap<String, usize> = HashMap::new();
+    for p in &alive {
+        if let Some(intent) = &p.intent {
+            *intents.entry(intent.goal_type.clone()).or_insert(0) += 1;
+        }
+    }
+
+    let epi_scar = alive.iter().map(|p| p.epistemic_scar).sum::<f64>() / alive.len() as f64;
+
+    format!("[t={}] patterns={} lineages={} err={:.3f} soul={:.3f} binding={:.3f} states={:?} intents={:?} epi_scar={:.3f}",
+        t, alive.len(), lineages.len(), err, soul, binding, states, intents, epi_scar)
+}
+
+fn detect_new_components(field: &FieldLayer) -> Vec<HashSet<(usize, usize)>> {
+    let mut visited = vec![vec![false; WORLD_SIZE]; WORLD_SIZE];
+    let mut components = Vec::new();
+
+    for x in 0..WORLD_SIZE {
+        for y in 0..WORLD_SIZE {
+            if !visited[x][y] && field[x][y][CH_ENERGY] > PATTERN_ENERGY_THRESHOLD && field[x][y][CH_OWNER] < 0.5 {
+                let mut component = HashSet::new();
+                let mut stack = vec![(x, y)];
+                visited[x][y] = true;
+
+                while let Some((cx, cy)) = stack.pop() {
+                    component.insert((cx, cy));
+                    for (dx, dy) in &[(-1i32, 0i32), (1, 0), (0, -1), (0, 1)] {
+                        let nx = ((cx as i32 + dx + WORLD_SIZE as i32) % WORLD_SIZE as i32) as usize;
+                        let ny = ((cy as i32 + dy + WORLD_SIZE as i32) % WORLD_SIZE as i32) as usize;
+                        if !visited[nx][ny] && field[nx][ny][CH_ENERGY] > PATTERN_ENERGY_THRESHOLD && field[nx][ny][CH_OWNER] < 0.5 {
+                            visited[nx][ny] = true;
+                            stack.push((nx, ny));
+                        }
+                    }
+                }
+
+                if component.len() >= MIN_COMPONENT_CELLS {
+                    components.push(component);
+                }
+            }
+        }
+    }
+    components
+}
+
+fn match_patterns(new_components: Vec<HashSet<(usize, usize)>>, patterns: &mut Vec<Pattern>, field: &mut FieldLayer) {
+    for cells in new_components {
+        let id = next_id();
+        let mut p = Pattern::new(id, cells, None);
+        p.update_properties(field);
+        let dummy_scar = vec![vec![0.0; WORLD_SIZE]; WORLD_SIZE];
+        p.update_model(field, None, None, &dummy_scar);
+        patterns.push(p);
+    }
+}
+
+fn emergency_rescue(patterns: &mut Vec<Pattern>, field: &mut FieldLayer, t: i64, last_rescue_t: &mut i64) {
+    let alive_count = patterns.iter().filter(|p| p.alive).count();
+    if alive_count >= MIN_POPULATION_FOR_SPAWN { return; }
+    if t - *last_rescue_t < 30 { return; }
+    *last_rescue_t = t;
+
+    let num_rescue = (MIN_PATTERNS_GUARANTEED - alive_count).max(5);
+    let donor = patterns.iter().find(|p| p.alive);
+
+    for i in 0..num_rescue {
+        let x = (phi_hash(t, i as i64, 999) * WORLD_SIZE as f64) as usize % WORLD_SIZE;
+        let y = (phi_hash(t, i as i64, 1000) * WORLD_SIZE as f64) as usize % WORLD_SIZE;
+        field[x][y][CH_ENERGY] += 0.2;
+        field[x][y][CH_UNKNOWN] += 0.1;
+        field[x][y][CH_OWNER] = 0.0;
+
+        let id = next_id();
+        let mut cells = HashSet::new();
+        cells.insert((x, y));
+        let mut p = Pattern::new(id, cells, donor);
+        if let Some(d) = donor {
+            for j in 0..5 {
+                p.belief[j] = d.belief[j] + (phi_hash(id as i64, j as i64, 99) - 0.5) * 0.1;
+            }
+        }
+        p.update_properties(field);
+        patterns.push(p);
+    }
+    println!("[t={}] EMERGENCY RESCUE: spawned {} patterns", t, num_rescue);
+}
+
+// =========================
+// MAIN LOOP
+// =========================
+fn run_simulation(steps: usize) {
+    let mut field = init_field();
+    let mut scar = init_scar();
+    let mut echo_prison = EchoPrison::new();
+    let mut patterns: Vec<Pattern> = Vec::new();
+    let mut last_rescue_t: i64 = -100;
+
+    NEXT_PATTERN_ID.set(1);
+
+    for i in 0..MIN_PATTERNS_GUARANTEED {
+        let seed = (phi_hash(0, i as i64, 12345) * WORLD_SIZE as f64 * WORLD_SIZE as f64) as usize;
+        let x = seed % WORLD_SIZE;
+        let y = (seed / WORLD_SIZE) % WORLD_SIZE;
+        field[x][y][CH_ENERGY] += 0.3;
+        let id = next_id();
+        let mut cells = HashSet::new();
+        cells.insert((x, y));
+        let mut p = Pattern::new(id, cells, None);
+        p.update_properties(&field);
+        patterns.push(p);
+    }
+
+    for t in 0..steps as i64 {
+        field_dynamics(&mut field, &mut scar, t);
+        crisis_injection(&mut field, t);
+        anti_conformist_injection(&mut patterns, t);
+
+        let mut given_counter = 0usize;
+
+        for i in 0..patterns.len() {
+            if !patterns[i].alive { continue; }
+            patterns[i].update_model(&mut field, None, Some(&mut given_counter), &scar);
+
+            if patterns[i].pred_error <= PRED_ERROR_THRESHOLD {
+                let mut new_cells = HashSet::new();
+                for (x, y) in &patterns[i].cells {
+                    let intent_bias = if let Some(intent) = &patterns[i].intent {
+                        if intent.goal_type == "explore" { 1.5 } else { 1.0 }
+                    } else { 1.0 };
+
+                    for (dx, dy) in &[(-1i32, 0i32), (1, 0), (0, -1), (0, 1)] {
+                        let nx = ((*x as i32 + dx + WORLD_SIZE as i32) % WORLD_SIZE as i32) as usize;
+                        let ny = ((*y as i32 + dy + WORLD_SIZE as i32) % WORLD_SIZE as i32) as usize;
+                        if field[nx][ny][CH_OWNER] < 0.5 {
+                            let strategy = patterns[i].genome.epistemic_strategy;
+                            let base_threshold = patterns[i].pred_error * (1.5 + if patterns[i].given_trigger { 1.0 } else { 0.0 });
+                            let threshold = if strategy > 0.66 {
+                                base_threshold / (1.0 + field[nx][ny][CH_UNKNOWN].min(0.8))
+                            } else if strategy >= 0.33 {
+                                base_threshold * (1.0 + (field[nx][ny][CH_UNKNOWN].min(0.8) - patterns[i].unknown_prediction).max(0.0))
+                            } else {
+                                base_threshold
+                            };
+                            if field[nx][ny][CH_SURPRISE] < threshold / intent_bias {
+                                new_cells.insert((nx, ny));
+                            }
+                        }
+                    }
+                }
+                for (nx, ny) in new_cells {
+                    if phi_hash(nx as i64, ny as i64, patterns[i].id as i64) < 0.3 {
+                        patterns[i].cells.insert((nx, ny));
+                        field[nx][ny][CH_OWNER] = patterns[i].id as f64;
+                    }
+                }
+            }
+        }
+
+        resolve_competitions_spatial(&mut patterns, &mut field);
+
+        for i in 0..patterns.len() {
+            if patterns[i].alive {
+                patterns[i].metabolic_tax(&mut field, HUNGER_MULTIPLIER);
+                if patterns[i].should_die() {
+                    echo_prison.store_echo(&patterns[i]);
+                    patterns[i].alive = false;
+                }
+            }
+        }
+
+        let mut new_patterns = Vec::new();
+        for i in 0..patterns.len() {
+            if patterns[i].alive && patterns[i].can_divide() {
+                let id = next_id();
+                if let Some(child) = patterns[i].divide(&field, id) {
+                    new_patterns.push(child);
+                }
+            }
+        }
+        patterns.extend(new_patterns);
+
+        let spore_children = process_spores(&mut patterns, &field);
+        patterns.extend(spore_children);
+
+        echo_prison.inject_echo(&patterns, &mut field, t);
+        emergency_rescue(&mut patterns, &mut field, t, &mut last_rescue_t);
+
+        patterns.retain(|p| p.alive);
+        for p in &mut patterns { p.age += 1; }
+
+        if t >= 50 && t % 10 == 0 {
+            let components = detect_new_components(&field);
+            if !components.is_empty() {
+                match_patterns(components, &mut patterns, &mut field);
+            }
+        }
+
+        if t % 100 == 0 {
+            println!("{}", collect_metrics(&patterns, &field, t));
+        }
+    }
+
+    println!("\n=== FINAL REPORT ===");
+    let alive: Vec<&Pattern> = patterns.iter().filter(|p| p.alive).collect();
+    println!("Surviving patterns: {}", alive.len());
+    let lineages: HashSet<u32> = alive.iter().map(|p| p.lineage_id).collect();
+    println!("Lineage diversity: {}", lineages.len());
+
+    let long_lived: Vec<&Pattern> = alive.iter().filter(|p| p.age > 100).collect();
+    println!("Long-lived patterns (>100 steps): {}", long_lived.len());
+
+    let mut sorted: Vec<&Pattern> = patterns.iter().filter(|p| !p.biography.is_empty()).collect();
+    sorted.sort_by(|a, b| b.age.cmp(&a.age));
+    println!("\n--- Top 5 Longest-Lived Patterns ---");
+    for p in sorted.iter().take(5) {
+        println!("  Pattern #{} (age={}, soul={:.2f}, cells={})",
+            p.id, p.age, p.soul_weight, p.cells.len());
+        println!("  Lineage: {}, Role: {}, Phase: {}", p.lineage_id, p.role, p.local_phase);
+        println!("  Emotional: grat={:.2f} grief={:.2f}",
+            p.emotional_memory.get("gratitude").unwrap_or(&0.0),
+            p.emotional_memory.get("grief").unwrap_or(&0.0));
+        println!("  Semantic state: {}", p.semantic_state);
+    }
+}
+
+// =========================
+// ENTRY POINT
+// =========================
+fn main() {
+    println!("832 AGI PROJECTION CORE v0.3.2 — Rust (Final Edition)");
+    println!("=======================================================");
+    run_simulation(STEPS);
+}
